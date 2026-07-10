@@ -1,0 +1,24 @@
+# Environment variables
+.env
+
+# Executable files
+*.exe
+
+# Log files
+*.log
+
+# Temporary folders
+tmp/
+temp/
+
+# Upload folder
+uploads/
+
+# VS Code settings
+.vscode/settings.json
+
+# Windows files
+Thumbs.db
+
+# Mac files
+.DS_Store
