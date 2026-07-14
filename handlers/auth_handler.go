@@ -62,3 +62,62 @@ func Register(w http.ResponseWriter, r *http.Request){
 	}) 
 
 }
+
+func Login(w http.ResponseWriter, r *http.Request) {
+
+	// Check request method
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// temp struct only needed email and pass that's why User struct not used
+	var loginData struct {
+		Email	string `json:"email"`
+		Password	string `json:"password"`
+	}
+
+	// decode json
+	err := json.NewDecoder(r.Body).Decode(&loginData)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	//empty user 
+	var user models.User
+
+	/*
+	 find user by email  ----> 
+	SELECT * 
+	FROM users 
+	WHERE email='gouri@gmail.com'
+	LIMIT 1; 
+	*/
+	result := config.DB.Where("email = ?", loginData.Email).First(&user)
+
+	if result.Error != nil {
+		http.Error(w, "User Not Found", http.StatusUnauthorized)
+		return
+	}
+
+	//Password Comparison  ---> bcrypt internally does hash of entered pass again and comapre
+	err = bcrypt.CompareHashAndPassword (
+		[]byte(user.Password),
+		[]byte(loginData.Password),
+	)
+
+	if err != nil {
+		http.Error(w,
+			"Invalid Password",
+			http.StatusUnauthorized)
+		return
+	}
+
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"message": "Login Successful",
+		},
+	)
+
+}

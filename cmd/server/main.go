@@ -17,6 +17,7 @@ func main() {
 	config.DB.AutoMigrate(&models.User{})
 
 	http.HandleFunc("/register", handlers.Register)
+	http.HandleFunc("/login", handlers.Login)
 
 	fmt.Println("Server Running on port 8080")
 
