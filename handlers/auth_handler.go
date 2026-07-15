@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"taskflow/config"
 	"taskflow/models"
+	"time"
+	"os"
 
 	"golang.org/x/crypto/bcrypt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // w - used to send data to client
@@ -114,9 +117,32 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Claims are data stored inside token
+
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"user_id" : user.ID,
+			"email" : user.Email,
+			"exp" : time.Now().Add(time.Hour * 24). Unix(),
+		},
+	)
+
+	tokenString, err := token.SignedString(
+		[]byte(os.Getenv("JWT_SECRET")),
+	)
+
+	/*
+		Token structure : Header - how the token was created
+		Payload - Actual data / Claims  - Base64 encoded not encrypted anyone can decode and read it 
+		so never store passwords, otps, secret info
+		Signature - Proof that token is genuine
+	*/
+
 	json.NewEncoder(w).Encode(
 		map[string]string{
 			"message": "Login Successful",
+			"token" : tokenString,
 		},
 	)
 
