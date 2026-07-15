@@ -147,3 +147,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	)
 
 }
+
+func GetTasks(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"message" : "protected route accessed",
+		},
+	)
+}

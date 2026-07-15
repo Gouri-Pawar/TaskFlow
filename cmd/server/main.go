@@ -8,6 +8,7 @@ import (
 	"taskflow/config"
 	"taskflow/handlers"
 	"taskflow/models"
+	"taskflow/middleware"
 )
 
 func main() {
@@ -18,6 +19,13 @@ func main() {
 
 	http.HandleFunc("/register", handlers.Register)
 	http.HandleFunc("/login", handlers.Login)
+
+	http.HandleFunc(
+		"/tasks",
+		middleware.JWTMiddleware(
+			handlers.GetTasks,
+		),
+	)
 
 	fmt.Println("Server Running on port 8080")
 
