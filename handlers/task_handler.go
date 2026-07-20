@@ -50,3 +50,26 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(task)
 }
+
+// get tasks function written below
+
+func GetTasks(w http.ResponseWriter, r *http.Request){
+	var tasks []models.Task
+
+	userID := uint(
+		r.Context().
+		Value("user_id").
+		(float64),
+	)
+
+	err := config.DB.
+	Where("user_id = ?", userID).
+	Find(&tasks).Error
+
+	if err != nil {
+		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(tasks)
+}
