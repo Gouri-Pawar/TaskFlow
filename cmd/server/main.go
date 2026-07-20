@@ -25,12 +25,11 @@ func main() {
 	http.HandleFunc("/login", handlers.Login)
 
 	http.HandleFunc(
-		"/get_tasks",
-		middleware.JWTMiddleware(
-			handlers.GetTasks,
-		),
-	)
-
+	"/get_tasks",
+	middleware.JWTMiddleware(
+		handlers.GetTasks,
+	),
+)
 	http.HandleFunc(
 		"/tasks",
 		middleware.JWTMiddleware(handlers.CreateTask,
