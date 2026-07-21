@@ -73,3 +73,127 @@ func GetTasks(w http.ResponseWriter, r *http.Request){
 
 	json.NewEncoder(w).Encode(tasks)
 }
+
+func DeleteTask(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	if r.Method != http.MethodDelete {
+
+		http.Error(
+			w,
+			"Only DELETE allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
+	taskID := r.URL.Query().Get("id")
+
+	userID := uint(
+			r.Context().
+				Value("user_id").(float64),
+		)
+
+	var task models.Task
+
+	err := config.DB.Where(
+			"id = ? AND user_id = ?",
+			taskID,
+			userID,
+		).
+		First(&task).Error
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"Task not found",
+			http.StatusNotFound,
+		)
+		return
+	}
+
+	config.DB.Delete(&task)
+
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"message":
+				"Task Deleted Successfully",
+		},
+	)
+}
+
+func UpdateTask(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	if r.Method != http.MethodPut {
+
+		http.Error(
+			w,
+			"Only PUT allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
+	taskID :=
+		r.URL.Query().Get("id")
+
+	userID :=
+		uint(
+			r.Context().
+				Value("user_id").(float64),)
+
+	var task models.Task
+
+	err := config.DB.Where(
+			"id = ? AND user_id = ?",
+			taskID,
+			userID,
+		).
+		First(&task).Error
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"Task not found",
+			http.StatusNotFound,
+		)
+		return
+	}
+
+	var updatedTask models.Task
+
+	err = json.NewDecoder(
+			r.Body,
+		).Decode(
+			&updatedTask)
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"Invalid JSON",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	task.Title =
+		updatedTask.Title
+
+	task.Description =
+		updatedTask.Description
+
+	task.Completed =
+		updatedTask.Completed
+
+	config.DB.Save(&task)
+
+	json.NewEncoder(w).Encode(task)
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<h1>Login</h1>
+
+<input
+    type="email"
+    id="email"
+    placeholder="Email">
+
+<input
+    type="password"
+    id="password"
+    placeholder="Password">
+
+<button onclick="login()">
+    Login
+</button>
+
+<p id="msg"></p>
+```
+
+</div>
+
+<script>
+
+async function login() {
+
+    const user = {
+
+        email:
+            document.getElementById("email").value,
+
+        password:
+            document.getElementById("password").value
+    };
+
+    const response =
+        await fetch(
+            "http://localhost:8080/login",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(user)
+            }
+        );
+
+    const data =
+        await response.json();
+
+    if (data.token) {
+
+        localStorage.setItem(
+            "token",
+            data.token
+        );
+
+        window.location.href =
+            "dashboard.html";
+    }
+    else {
+
+        document.getElementById("msg")
+            .innerText =
+                "Invalid Credentials";
+    }
+}
+
+</script>
+
+</body>
+</html>

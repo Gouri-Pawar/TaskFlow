@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+```
+<div class="container">
+
+    <h1>My Dashboard</h1>
+
+    <!-- CREATE TASK SECTION -->
+
+    <h2>Create Task</h2>
+
+    <input
+        type="text"
+        id="title"
+        placeholder="Task Title">
+
+    <input
+        type="text"
+        id="description"
+        placeholder="Description">
+
+    <button onclick="createTask()">
+        Add Task
+    </button>
+
+    <hr>
+
+    <!-- DISPLAY TASKS SECTION -->
+
+    <h2>My Tasks</h2>
+
+    <div id="tasks">
+
+    </div>
+
+    <button onclick="logout()">
+    Logout
+</button>
+
+</div>
+
+<script>
+
+    window.onload = function () {
+        loadTasks();
+    };
+
+    async function loadTasks() {
+
+        const token =
+            localStorage.getItem("token");
+
+        const response =
+            await fetch(
+                "http://localhost:8080/get_tasks",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " + token
+                    }
+                }
+            );
+
+        const tasks =
+        await response.json();
+
+      //console.log(tasks);
+
+        let html = "";
+
+        tasks.forEach(task => {
+
+    html += `
+        <div>
+
+            <h3>${task.title}</h3>
+
+            <p>
+                ${task.description}
+            </p>
+
+            <button
+                onclick="updateTask(${task.ID})">
+                Update
+            </button>
+
+            <button
+                onclick="deleteTask(${task.ID})">
+                Delete
+            </button>
+
+            <hr>
+
+            </div>
+        `;
+    });
+
+        document.getElementById("tasks")
+            .innerHTML = html;
+    }
+
+    async function deleteTask(id){
+
+    const token =
+        localStorage.getItem("token");
+
+    await fetch(
+        `http://localhost:8080/tasks/delete?id=${id}`,
+        {
+            method: "DELETE",
+
+            headers:{
+                Authorization:
+                    "Bearer " + token
+            }
+        }
+    );
+
+    loadTasks();
+}
+
+async function updateTask(id) {
+
+    const title =
+        prompt("Enter new title");
+
+    const description =
+        prompt("Enter new description");
+
+    const token =
+        localStorage.getItem("token");
+
+    await fetch(
+        `http://localhost:8080/tasks/update?id=${id}`,
+        {
+            method: "PUT",
+
+            headers: {
+                "Content-Type":
+                    "application/json",
+
+                Authorization:
+                    "Bearer " + token
+            },
+
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                completed: false
+            })
+        }
+    );
+
+    loadTasks();
+}
+
+    async function createTask() {
+
+        const token =
+            localStorage.getItem("token");
+
+        const task = {
+
+            title:
+                document.getElementById("title").value,
+
+            description:
+                document.getElementById("description").value
+        };
+
+        await fetch(
+            "http://localhost:8080/tasks",
+            {
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json",
+
+                    Authorization:
+                        "Bearer " + token
+                },
+
+                body:
+                    JSON.stringify(task)
+            }
+        );
+
+        loadTasks();
+    }
+
+function logout() {
+
+    localStorage.removeItem("token");
+
+    window.location.href =
+        "login.html";
+}
+
+</script>
+```
+
+</body>
+
+</html>
