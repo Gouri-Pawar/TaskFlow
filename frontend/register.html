@@ -1,80 +1,98 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="en">
 <head>
-    <title>TaskFlow Register</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — TaskFlow</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-```
-<div class="container">
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-eyebrow">TaskFlow</div>
+      <h1>Create your account</h1>
 
-    <h1>Register</h1>
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" placeholder="Your name" required autocomplete="name">
+        </div>
 
-    <input
-        type="text"
-        id="name"
-        placeholder="Enter Name">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
 
-    <input
-        type="email"
-        id="email"
-        placeholder="Enter Email">
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="At least 8 characters" required autocomplete="new-password">
+        </div>
 
-    <input
-        type="password"
-        id="password"
-        placeholder="Enter Password">
+        <button type="submit" class="btn-primary" id="submit-btn">Register</button>
+        <p id="msg" class="msg"></p>
+      </form>
 
-    <button onclick="register()">
-        Register
-    </button>
+      <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+    </div>
+  </div>
 
-    <p id="msg"></p>
+  <script>
+    const API_BASE = "http://localhost:8080"; // change this when deploying
 
-</div>
-```
+    const form = document.getElementById("register-form");
+    const msgEl = document.getElementById("msg");
+    const submitBtn = document.getElementById("submit-btn");
 
-<script>
+    function setMessage(text, type) {
+      msgEl.textContent = text || "";
+      msgEl.className = "msg" + (type ? " " + type : "");
+    }
 
-async function register() {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const user = {
-        name:
-            document.getElementById("name").value,
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
 
-        email:
-            document.getElementById("email").value,
+      if (!name || !email || !password) {
+        setMessage("Fill in every field.", "error");
+        return;
+      }
+      if (password.length < 8) {
+        setMessage("Password must be at least 8 characters.", "error");
+        return;
+      }
 
-        password:
-            document.getElementById("password").value
-    };
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating account…";
+      setMessage("");
 
-    const response = await fetch(
-        "http://localhost:8080/register",
-        {
-            method: "POST",
+      try {
+        const response = await fetch(`${API_BASE}/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password })
+        });
 
-            headers: {
-                "Content-Type":
-                    "application/json"
-            },
+        const data = await response.json().catch(() => ({}));
 
-            body:
-                JSON.stringify(user)
+        if (response.ok) {
+          setMessage("Account created — redirecting to log in…", "success");
+          setTimeout(() => { window.location.href = "login.html"; }, 1200);
+          return;
         }
-    );
 
-    const data =
-        await response.json();
-
-    document.getElementById("msg")
-        .innerText =
-            data.message;
-}
-
-</script>
+        setMessage(data.message || "Couldn't create that account. Try a different email.", "error");
+      } catch (err) {
+        setMessage("Can't reach the server. Check your connection and try again.", "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Register";
+      }
+    });
+  </script>
 
 </body>
 </html>

@@ -1,215 +1,245 @@
 <!DOCTYPE html>
-
-<html>
-
+<html lang="en">
 <head>
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — TaskFlow</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
 
-```
-<div class="container">
+  <div class="dash-shell">
 
-    <h1>My Dashboard</h1>
-
-    <!-- CREATE TASK SECTION -->
-
-    <h2>Create Task</h2>
-
-    <input
-        type="text"
-        id="title"
-        placeholder="Task Title">
-
-    <input
-        type="text"
-        id="description"
-        placeholder="Description">
-
-    <button onclick="createTask()">
-        Add Task
-    </button>
-
-    <hr>
-
-    <!-- DISPLAY TASKS SECTION -->
-
-    <h2>My Tasks</h2>
-
-    <div id="tasks">
-
+    <div class="dash-header">
+      <div>
+        <div class="auth-eyebrow">TaskFlow</div>
+        <h1>Your tasks</h1>
+      </div>
+      <button class="btn-ghost" id="logout-btn">Log out</button>
     </div>
 
-    <button onclick="logout()">
-    Logout
-</button>
+    <div class="stats-strip" id="stats-strip"></div>
 
-</div>
+    <div class="composer">
+      <h2>Add a task</h2>
+      <form id="create-form">
+        <div class="composer-row">
+          <div class="field">
+            <input type="text" id="title" placeholder="Task title" required>
+          </div>
+          <div class="field">
+            <input type="text" id="description" placeholder="Description (optional)">
+          </div>
+          <button type="submit" class="btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
 
-<script>
+    <div class="section-label">All tasks</div>
+    <div id="tasks" class="task-list"></div>
 
-    window.onload = function () {
-        loadTasks();
-    };
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:8080"; // change this when deploying
+
+    const tasksEl = document.getElementById("tasks");
+    const statsEl = document.getElementById("stats-strip");
+    const token = localStorage.getItem("token");
+
+    // No token at all — don't even try, straight to login.
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str ?? "";
+      return div.innerHTML;
+    }
+
+    function authedFetch(path, options = {}) {
+      return fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: "Bearer " + token
+        }
+      });
+    }
+
+    function goToLogin() {
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+    }
+
+    function renderStats(tasks) {
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.completed).length;
+      const pending = total - completed;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+
+      statsEl.innerHTML = `
+        <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-value">${pending}</div><div class="stat-label">Pending</div></div>
+        <div class="stat accent"><div class="stat-value">${completed}</div><div class="stat-label">Completed</div></div>
+        <div class="stat accent"><div class="stat-value">${pct}%</div><div class="stat-label">Done</div></div>
+      `;
+    }
+
+    function taskCardHtml(task) {
+      const id = task.ID;
+      const done = !!task.completed;
+      return `
+        <div class="task-card ${done ? "done" : ""}" data-id="${id}">
+          <button class="task-toggle" data-action="toggle" title="${done ? "Mark as pending" : "Mark as done"}">${done ? "✓" : ""}</button>
+          <div class="task-body">
+            <h3>${escapeHtml(task.title)}</h3>
+            ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
+          </div>
+          <div class="task-actions">
+            <button class="icon-btn" data-action="edit">Edit</button>
+            <button class="icon-btn danger" data-action="delete">Delete</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function editFormHtml(task) {
+      const id = task.ID;
+      return `
+        <div class="task-card" data-id="${id}">
+          <form class="edit-form" data-action="save-edit">
+            <input type="text" class="edit-title" value="${escapeHtml(task.title)}" required>
+            <input type="text" class="edit-description" value="${escapeHtml(task.description || "")}" placeholder="Description">
+            <div class="edit-actions">
+              <button type="submit" class="btn-primary">Save</button>
+              <button type="button" class="icon-btn" data-action="cancel-edit">Cancel</button>
+            </div>
+          </form>
+        </div>
+      `;
+    }
 
     async function loadTasks() {
+      tasksEl.innerHTML = `<div class="state-block"><div class="state-title">Loading your tasks…</div></div>`;
 
-        const token =
-            localStorage.getItem("token");
+      let response;
+      try {
+        response = await authedFetch("/get_tasks");
+      } catch (err) {
+        tasksEl.innerHTML = `<div class="state-block"><div class="state-title error">Can't reach the server</div>Check your connection and refresh.</div>`;
+        return;
+      }
 
-        const response =
-            await fetch(
-                "http://localhost:8080/get_tasks",
-                {
-                    headers: {
-                        Authorization:
-                            "Bearer " + token
-                    }
-                }
-            );
+      if (response.status === 401) {
+        goToLogin();
+        return;
+      }
 
-        const tasks =
-        await response.json();
+      const data = await response.json().catch(() => null);
 
-      //console.log(tasks);
+      if (!response.ok || !Array.isArray(data)) {
+        tasksEl.innerHTML = `<div class="state-block"><div class="state-title error">Couldn't load tasks</div>Something went wrong on our end. Try refreshing.</div>`;
+        statsEl.innerHTML = "";
+        return;
+      }
 
-        let html = "";
+      renderStats(data);
 
-        tasks.forEach(task => {
+      if (data.length === 0) {
+        tasksEl.innerHTML = `<div class="state-block"><div class="state-title">No tasks yet</div>Add your first task above to get started.</div>`;
+        return;
+      }
 
-    html += `
-        <div>
+      tasksEl.innerHTML = data.map(taskCardHtml).join("");
+    }
 
-            <h3>${task.title}</h3>
+    async function toggleTask(id, nextCompleted, title, description) {
+      await authedFetch(`/tasks/update?id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, completed: nextCompleted })
+      });
+      loadTasks();
+    }
 
-            <p>
-                ${task.description}
-            </p>
+    async function saveEdit(id, title, description, completed) {
+      await authedFetch(`/tasks/update?id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, completed })
+      });
+      loadTasks();
+    }
 
-            <button
-                onclick="updateTask(${task.ID})">
-                Update
-            </button>
+    async function deleteTask(id) {
+      if (!confirm("Delete this task? This can't be undone.")) return;
+      await authedFetch(`/tasks/delete?id=${id}`, { method: "DELETE" });
+      loadTasks();
+    }
 
-            <button
-                onclick="deleteTask(${task.ID})">
-                Delete
-            </button>
+    // Event delegation — one listener handles toggle / edit / delete / save / cancel
+    tasksEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const card = btn.closest(".task-card");
+      const id = card.dataset.id;
+      const action = btn.dataset.action;
 
-            <hr>
-
-            </div>
-        `;
+      if (action === "delete") {
+        deleteTask(id);
+      } else if (action === "toggle") {
+        const done = card.classList.contains("done");
+        const title = card.querySelector(".task-body h3").textContent;
+        const descEl = card.querySelector(".task-body p");
+        toggleTask(id, !done, title, descEl ? descEl.textContent : "");
+      } else if (action === "edit") {
+        card.outerHTML = editFormHtml({
+          ID: id,
+          title: card.querySelector(".task-body h3").textContent,
+          description: card.querySelector(".task-body p")?.textContent || ""
+        });
+      } else if (action === "cancel-edit") {
+        loadTasks();
+      }
     });
 
-        document.getElementById("tasks")
-            .innerHTML = html;
-    }
+    tasksEl.addEventListener("submit", (e) => {
+      const form = e.target.closest('[data-action="save-edit"]');
+      if (!form) return;
+      e.preventDefault();
+      const card = form.closest(".task-card");
+      const id = card.dataset.id;
+      const title = form.querySelector(".edit-title").value.trim();
+      const description = form.querySelector(".edit-description").value.trim();
+      if (!title) return;
+      saveEdit(id, title, description, false);
+    });
 
-    async function deleteTask(id){
+    document.getElementById("create-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const titleEl = document.getElementById("title");
+      const descEl = document.getElementById("description");
+      const title = titleEl.value.trim();
+      const description = descEl.value.trim();
+      if (!title) return;
 
-    const token =
-        localStorage.getItem("token");
+      await authedFetch("/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description })
+      });
 
-    await fetch(
-        `http://localhost:8080/tasks/delete?id=${id}`,
-        {
-            method: "DELETE",
+      titleEl.value = "";
+      descEl.value = "";
+      loadTasks();
+    });
 
-            headers:{
-                Authorization:
-                    "Bearer " + token
-            }
-        }
-    );
-
-    loadTasks();
-}
-
-async function updateTask(id) {
-
-    const title =
-        prompt("Enter new title");
-
-    const description =
-        prompt("Enter new description");
-
-    const token =
-        localStorage.getItem("token");
-
-    await fetch(
-        `http://localhost:8080/tasks/update?id=${id}`,
-        {
-            method: "PUT",
-
-            headers: {
-                "Content-Type":
-                    "application/json",
-
-                Authorization:
-                    "Bearer " + token
-            },
-
-            body: JSON.stringify({
-                title: title,
-                description: description,
-                completed: false
-            })
-        }
-    );
+    document.getElementById("logout-btn").addEventListener("click", goToLogin);
 
     loadTasks();
-}
-
-    async function createTask() {
-
-        const token =
-            localStorage.getItem("token");
-
-        const task = {
-
-            title:
-                document.getElementById("title").value,
-
-            description:
-                document.getElementById("description").value
-        };
-
-        await fetch(
-            "http://localhost:8080/tasks",
-            {
-                method: "POST",
-
-                headers: {
-
-                    "Content-Type":
-                        "application/json",
-
-                    Authorization:
-                        "Bearer " + token
-                },
-
-                body:
-                    JSON.stringify(task)
-            }
-        );
-
-        loadTasks();
-    }
-
-function logout() {
-
-    localStorage.removeItem("token");
-
-    window.location.href =
-        "login.html";
-}
-
-</script>
-```
+  </script>
 
 </body>
-
 </html>
