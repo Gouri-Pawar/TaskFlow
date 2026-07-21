@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="auth-shell">
+    <div class="auth-card" style="text-align:center;">
+      <div class="auth-eyebrow">TaskFlow</div>
+      <h1>Organize your day</h1>
+      <p class="msg" style="margin-bottom: 20px;">Track tasks, priorities, and deadlines in one place.</p>
+      <a href="login.html"><button class="btn-primary">Log in</button></a>
+      <p class="auth-switch">New here? <a href="register.html">Create an account</a></p>
+    </div>
+  </div>
+
+  <script>
+    // Send logged-in users straight to their dashboard.
+    if (localStorage.getItem("token")) {
+      window.location.href = "dashboard.html";
+    }
+  </script>
+
+</body>
+</html>

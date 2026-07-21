@@ -1,86 +1,93 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log in — TaskFlow</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="container">
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-eyebrow">TaskFlow</div>
+      <h1>Log in</h1>
 
-<h1>Login</h1>
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
 
-<input
-    type="email"
-    id="email"
-    placeholder="Email">
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Your password" required autocomplete="current-password">
+        </div>
 
-<input
-    type="password"
-    id="password"
-    placeholder="Password">
+        <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
+        <p id="msg" class="msg"></p>
+      </form>
 
-<button onclick="login()">
-    Login
-</button>
+      <p class="auth-switch">Don't have an account? <a href="register.html">Register</a></p>
+    </div>
+  </div>
 
-<p id="msg"></p>
-```
+  <script>
+    const API_BASE = "http://localhost:8080"; // change this when deploying
 
-</div>
-
-<script>
-
-async function login() {
-
-    const user = {
-
-        email:
-            document.getElementById("email").value,
-
-        password:
-            document.getElementById("password").value
-    };
-
-    const response =
-        await fetch(
-            "http://localhost:8080/login",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body:
-                    JSON.stringify(user)
-            }
-        );
-
-    const data =
-        await response.json();
-
-    if (data.token) {
-
-        localStorage.setItem(
-            "token",
-            data.token
-        );
-
-        window.location.href =
-            "dashboard.html";
+    // If already logged in, skip straight to the dashboard.
+    if (localStorage.getItem("token")) {
+      window.location.href = "dashboard.html";
     }
-    else {
 
-        document.getElementById("msg")
-            .innerText =
-                "Invalid Credentials";
+    const form = document.getElementById("login-form");
+    const msgEl = document.getElementById("msg");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function setMessage(text, type) {
+      msgEl.textContent = text || "";
+      msgEl.className = "msg" + (type ? " " + type : "");
     }
-}
 
-</script>
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        setMessage("Enter your email and password.", "error");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Logging in…";
+      setMessage("");
+
+      try {
+        const response = await fetch(`${API_BASE}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.token) {
+          localStorage.setItem("token", data.token);
+          window.location.href = "dashboard.html";
+          return;
+        }
+
+        setMessage(data.message || "Invalid email or password.", "error");
+      } catch (err) {
+        setMessage("Can't reach the server. Check your connection and try again.", "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Log in";
+      }
+    });
+  </script>
 
 </body>
 </html>
