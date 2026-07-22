@@ -6,7 +6,20 @@ import (
 
 	"taskflow/config"
 	"taskflow/models"
+	"time"
 )
+
+// validPriority makes sure only known priority values get stored.
+// Anything empty or unrecognized quietly falls back to "medium"
+// instead of failing the request outright.
+func validPriority(p string) string {
+	switch p {
+	case "low", "medium", "high":
+		return p
+	default:
+		return "medium"
+	}
+}
 
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 
@@ -32,6 +45,15 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	task.Priority = validPriority(task.Priority)
+
+	// A task can technically be created already-completed;
+	// if so, stamp CompletedAt now instead of leaving it nil.
+	if task.Completed {
+		now := time.Now()
+		task.CompletedAt = &now
+	}
+
 	// Get user_id from JWT middleware
 	userID := r.Context().Value("user_id")
 
@@ -53,18 +75,18 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 
 // get tasks function written below
 
-func GetTasks(w http.ResponseWriter, r *http.Request){
+func GetTasks(w http.ResponseWriter, r *http.Request) {
 	var tasks []models.Task
 
 	userID := uint(
 		r.Context().
-		Value("user_id").
-		(float64),
+			Value("user_id").
+			(float64),
 	)
 
 	err := config.DB.
-	Where("user_id = ?", userID).
-	Find(&tasks).Error
+		Where("user_id = ?", userID).
+		Find(&tasks).Error
 
 	if err != nil {
 		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
@@ -92,17 +114,17 @@ func DeleteTask(
 	taskID := r.URL.Query().Get("id")
 
 	userID := uint(
-			r.Context().
-				Value("user_id").(float64),
-		)
+		r.Context().
+			Value("user_id").(float64),
+	)
 
 	var task models.Task
 
 	err := config.DB.Where(
-			"id = ? AND user_id = ?",
-			taskID,
-			userID,
-		).
+		"id = ? AND user_id = ?",
+		taskID,
+		userID,
+	).
 		First(&task).Error
 
 	if err != nil {
@@ -119,8 +141,7 @@ func DeleteTask(
 
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"message":
-				"Task Deleted Successfully",
+			"message": "Task Deleted Successfully",
 		},
 	)
 }
@@ -146,15 +167,15 @@ func UpdateTask(
 	userID :=
 		uint(
 			r.Context().
-				Value("user_id").(float64),)
+				Value("user_id").(float64))
 
 	var task models.Task
 
 	err := config.DB.Where(
-			"id = ? AND user_id = ?",
-			taskID,
-			userID,
-		).
+		"id = ? AND user_id = ?",
+		taskID,
+		userID,
+	).
 		First(&task).Error
 
 	if err != nil {
@@ -170,9 +191,9 @@ func UpdateTask(
 	var updatedTask models.Task
 
 	err = json.NewDecoder(
-			r.Body,
-		).Decode(
-			&updatedTask)
+		r.Body,
+	).Decode(
+		&updatedTask)
 
 	if err != nil {
 
@@ -189,6 +210,23 @@ func UpdateTask(
 
 	task.Description =
 		updatedTask.Description
+
+	task.Priority =
+		validPriority(updatedTask.Priority)
+
+	task.DueDate =
+		updatedTask.DueDate
+
+	// Only touch CompletedAt when the completed status actually
+	// changes — this is the key fix that makes streaks reliable.
+	// Editing a title/description no longer disturbs it.
+	
+	if updatedTask.Completed && !task.Completed {
+		now := time.Now()
+		task.CompletedAt = &now
+	} else if !updatedTask.Completed && task.Completed {
+		task.CompletedAt = nil
+	}
 
 	task.Completed =
 		updatedTask.Completed

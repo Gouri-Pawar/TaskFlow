@@ -8,28 +8,54 @@
 </head>
 <body>
 
-  <div class="auth-shell">
-    <div class="auth-card">
-      <div class="auth-eyebrow">TaskFlow</div>
-      <h1>Log in</h1>
+  <div class="split-shell">
 
-      <form id="login-form" novalidate>
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+    <div class="split-decor">
+      <div class="split-decor-brand">TaskFlow</div>
+
+      <div class="split-decor-body">
+        <h1>Pick up right where you left off.</h1>
+        <p class="decor-tagline">Your tasks, priorities, and streak are all waiting for you.</p>
+
+        <ul class="decor-features">
+          <li><span class="tick">✓</span> Everything synced and secure</li>
+          <li><span class="tick">✓</span> One place for today's priorities</li>
+        </ul>
+
+        <div class="decor-stickies">
+          <div class="chip chip1">Banner Ads<span></span><span style="width:55%"></span></div>
+          <div class="chip chip2">Email A/B<span></span><span style="width:80%"></span></div>
+          <div class="chip chip3">Strategy<span></span><span style="width:40%"></span></div>
         </div>
+      </div>
 
-        <div class="field">
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Your password" required autocomplete="current-password">
-        </div>
-
-        <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
-        <p id="msg" class="msg"></p>
-      </form>
-
-      <p class="auth-switch">Don't have an account? <a href="register.html">Register</a></p>
+      <div class="split-decor-foot">Secure, JWT-authenticated task management.</div>
     </div>
+
+    <div class="split-form">
+      <div class="auth-card">
+        <div class="auth-eyebrow">TaskFlow</div>
+        <h1>Log in</h1>
+
+        <form id="login-form" novalidate>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Your password" required autocomplete="current-password">
+          </div>
+
+          <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
+          <p id="msg" class="msg"></p>
+        </form>
+
+        <p class="auth-switch">Don't have an account? <a href="register.html">Register</a></p>
+      </div>
+    </div>
+
   </div>
 
   <script>

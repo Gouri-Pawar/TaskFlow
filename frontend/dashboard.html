@@ -8,49 +8,113 @@
 </head>
 <body>
 
-  <div class="dash-shell">
+  <!-- Floating toggle, only visible while the sidebar is collapsed -->
+  <button class="sidebar-toggle" id="sidebar-toggle-floating" title="Show sidebar">☰</button>
 
-    <div class="dash-header">
-      <div>
-        <div class="auth-eyebrow">TaskFlow</div>
-        <h1>Your tasks</h1>
+  <div class="app-shell" id="app-shell">
+
+    <aside class="sidebar">
+      <button class="sidebar-toggle sidebar-toggle-inline" id="sidebar-toggle-inline" title="Hide sidebar">☰</button>
+
+      <div class="sidebar-brand">TaskFlow</div>
+
+      <div class="sidebar-greeting" id="sidebar-greeting" style="display:none;">
+        <div class="hello">Welcome back</div>
+        <div class="name" id="greeting-name"></div>
       </div>
-      <button class="btn-ghost" id="logout-btn">Log out</button>
-    </div>
 
-    <div class="stats-strip" id="stats-strip"></div>
+      <div class="streak-panel" id="streak-panel"></div>
 
-    <div class="composer">
-      <h2>Add a task</h2>
-      <form id="create-form">
-        <div class="composer-row">
+      <div class="sidebar-search">
+        <input type="text" id="search-input" placeholder="Search tasks">
+      </div>
+
+      <button class="nav-item nav-add" id="add-task-nav">+ Add task</button>
+
+      <div class="sidebar-group-label">Tasks</div>
+      <ul class="sidebar-nav" id="status-nav">
+        <li><button class="nav-item active" data-filter="all">All tasks <span class="count" id="count-all">0</span></button></li>
+        <li><button class="nav-item" data-filter="pending">Pending <span class="count" id="count-pending">0</span></button></li>
+        <li><button class="nav-item" data-filter="completed">Completed <span class="count" id="count-completed">0</span></button></li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" id="logout-btn">Log out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-header">
+        <h1 id="view-title">All tasks</h1>
+      </div>
+      <p class="main-subtitle" id="view-subtitle">0 tasks</p>
+
+      <div class="wall-grid" id="wall-grid"></div>
+    </main>
+
+  </div>
+
+  <!-- Add / edit modal -->
+  <div class="modal-backdrop hidden" id="modal-backdrop">
+    <div class="modal-card">
+      <h2 id="modal-title">Add a task</h2>
+      <form id="task-form">
+        <div class="field">
+          <label for="task-title">Title</label>
+          <input type="text" id="task-title" placeholder="Task title" required>
+        </div>
+        <div class="field">
+          <label for="task-description">Description</label>
+          <textarea id="task-description" placeholder="Add details (optional)"></textarea>
+        </div>
+        <div class="modal-row">
           <div class="field">
-            <input type="text" id="title" placeholder="Task title" required>
+            <label for="task-priority">Priority</label>
+            <select id="task-priority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
           </div>
           <div class="field">
-            <input type="text" id="description" placeholder="Description (optional)">
+            <label for="task-due-date">Due date</label>
+            <input type="date" id="task-due-date">
           </div>
-          <button type="submit" class="btn-primary">Add</button>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary" id="modal-save-btn">Add task</button>
+          <button type="button" class="btn-ghost" id="modal-cancel-btn">Cancel</button>
         </div>
       </form>
     </div>
-
-    <div class="section-label">All tasks</div>
-    <div id="tasks" class="task-list"></div>
-
   </div>
 
   <script>
     const API_BASE = "http://localhost:8080"; // change this when deploying
 
-    const tasksEl = document.getElementById("tasks");
-    const statsEl = document.getElementById("stats-strip");
     const token = localStorage.getItem("token");
+    if (!token) window.location.href = "login.html";
 
-    // No token at all — don't even try, straight to login.
-    if (!token) {
-      window.location.href = "login.html";
-    }
+    const STICKY_COLORS = ["c0", "c1", "c2", "c3", "c4"];
+
+    let allTasks = [];
+    let currentFilter = "all";
+    let searchTerm = "";
+    let editingTaskId = null;
+
+    const appShell = document.getElementById("app-shell");
+    const wallGrid = document.getElementById("wall-grid");
+    const viewTitle = document.getElementById("view-title");
+    const viewSubtitle = document.getElementById("view-subtitle");
+    const modalBackdrop = document.getElementById("modal-backdrop");
+    const modalTitle = document.getElementById("modal-title");
+    const modalSaveBtn = document.getElementById("modal-save-btn");
+    const taskForm = document.getElementById("task-form");
+    const titleInput = document.getElementById("task-title");
+    const descInput = document.getElementById("task-description");
+    const priorityInput = document.getElementById("task-priority");
+    const dueDateInput = document.getElementById("task-due-date");
+    const streakPanel = document.getElementById("streak-panel");
 
     function escapeHtml(str) {
       const div = document.createElement("div");
@@ -61,10 +125,7 @@
     function authedFetch(path, options = {}) {
       return fetch(`${API_BASE}${path}`, {
         ...options,
-        headers: {
-          ...(options.headers || {}),
-          Authorization: "Bearer " + token
-        }
+        headers: { ...(options.headers || {}), Authorization: "Bearer " + token }
       });
     }
 
@@ -73,167 +134,316 @@
       window.location.href = "login.html";
     }
 
-    function renderStats(tasks) {
-      const total = tasks.length;
-      const completed = tasks.filter(t => t.completed).length;
-      const pending = total - completed;
-      const pct = total ? Math.round((completed / total) * 100) : 0;
+    /* ---------- JWT decode (client-side only, for display purposes) ---------- */
+    function decodeJwtPayload(jwt) {
+      try {
+        const payload = jwt.split(".")[1];
+        const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+        const json = decodeURIComponent(
+          atob(base64).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
+        );
+        return JSON.parse(json);
+      } catch (err) {
+        return null;
+      }
+    }
 
-      statsEl.innerHTML = `
-        <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total</div></div>
-        <div class="stat"><div class="stat-value">${pending}</div><div class="stat-label">Pending</div></div>
-        <div class="stat accent"><div class="stat-value">${completed}</div><div class="stat-label">Completed</div></div>
-        <div class="stat accent"><div class="stat-value">${pct}%</div><div class="stat-label">Done</div></div>
+    (function showGreeting() {
+      const claims = decodeJwtPayload(token);
+      if (claims && claims.name) {
+        document.getElementById("greeting-name").textContent = claims.name;
+        document.getElementById("sidebar-greeting").style.display = "block";
+      }
+    })();
+
+    /* ---------- Sidebar collapse (persisted) ---------- */
+    function setSidebarCollapsed(collapsed) {
+      appShell.classList.toggle("sidebar-collapsed", collapsed);
+      document.getElementById("sidebar-toggle-floating").style.display = collapsed ? "flex" : "none";
+      localStorage.setItem("sidebarCollapsed", collapsed ? "1" : "0");
+    }
+    setSidebarCollapsed(localStorage.getItem("sidebarCollapsed") === "1");
+    document.getElementById("sidebar-toggle-inline").addEventListener("click", () => setSidebarCollapsed(true));
+    document.getElementById("sidebar-toggle-floating").addEventListener("click", () => setSidebarCollapsed(false));
+
+    /* ---------- Date helpers ---------- */
+    function toLocalDateStr(d) {
+      const yr = d.getFullYear(), mo = String(d.getMonth() + 1).padStart(2, "0"), da = String(d.getDate()).padStart(2, "0");
+      return `${yr}-${mo}-${da}`;
+    }
+    const todayStr = toLocalDateStr(new Date());
+
+    function isOverdue(task) {
+      if (!task.due_date || task.completed) return false;
+      return task.due_date.slice(0, 10) < todayStr;
+    }
+
+    /* ---------- Streak ---------- */
+    function renderStreak() {
+      const completedDates = new Set(
+        allTasks.filter(t => t.completed && t.completed_at).map(t => toLocalDateStr(new Date(t.completed_at)))
+      );
+
+      // Current streak: walk backward from today (or yesterday, if today
+      // has nothing completed yet — you shouldn't lose your streak just
+      // because the day isn't over).
+      let streak = 0;
+      let cursor = new Date();
+      if (!completedDates.has(todayStr)) cursor.setDate(cursor.getDate() - 1);
+      while (completedDates.has(toLocalDateStr(cursor))) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      // Last 14 days, oldest to newest, for the dot row.
+      const dots = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const ds = toLocalDateStr(d);
+        dots.push(`<div class="streak-dot ${completedDates.has(ds) ? "active" : ""} ${ds === todayStr ? "today" : ""}" title="${ds}"></div>`);
+      }
+
+      streakPanel.innerHTML = `
+        <div class="streak-count">
+          <span class="flame">🔥</span>
+          <span class="num">${streak}</span>
+          <span class="label">day streak</span>
+        </div>
+        <div class="streak-dots">${dots.join("")}</div>
       `;
     }
 
-    function taskCardHtml(task) {
-      const id = task.ID;
+    /* ---------- Rendering ---------- */
+    const FILTER_LABELS = { all: "All tasks", pending: "Pending", completed: "Completed" };
+    const PRIORITY_LABELS = { low: "Low", medium: "Medium", high: "High" };
+
+    function updateCounts() {
+      document.getElementById("count-all").textContent = allTasks.length;
+      document.getElementById("count-pending").textContent = allTasks.filter(t => !t.completed).length;
+      document.getElementById("count-completed").textContent = allTasks.filter(t => t.completed).length;
+    }
+
+    function getVisibleTasks() {
+      return allTasks.filter(t => {
+        // Completed tasks only live under the Completed tab now.
+        if (currentFilter === "completed" && !t.completed) return false;
+        if (currentFilter !== "completed" && t.completed) return false;
+        if (searchTerm) {
+          const haystack = (t.title + " " + (t.description || "")).toLowerCase();
+          if (!haystack.includes(searchTerm.toLowerCase())) return false;
+        }
+        return true;
+      });
+    }
+
+    function formatDueDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+
+    function stickyHtml(task, index) {
+      const color = STICKY_COLORS[index % STICKY_COLORS.length];
       const done = !!task.completed;
+      const priority = task.priority || "medium";
+      const overdue = isOverdue(task);
+
       return `
-        <div class="task-card ${done ? "done" : ""}" data-id="${id}">
-          <button class="task-toggle" data-action="toggle" title="${done ? "Mark as pending" : "Mark as done"}">${done ? "✓" : ""}</button>
-          <div class="task-body">
+        <div class="sticky ${color} ${done ? "done" : ""}" data-id="${task.ID}">
+          <div class="sticky-top">
             <h3>${escapeHtml(task.title)}</h3>
-            ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
+            <button class="sticky-check" data-action="toggle" title="${done ? "Mark as pending" : "Mark as done"}">${done ? "✓" : ""}</button>
           </div>
-          <div class="task-actions">
-            <button class="icon-btn" data-action="edit">Edit</button>
-            <button class="icon-btn danger" data-action="delete">Delete</button>
+          ${task.description ? `<p>${escapeHtml(task.description)}</p>` : "<p></p>"}
+          <div class="sticky-meta">
+            <span class="priority-tag ${priority}">${PRIORITY_LABELS[priority] || "Medium"}</span>
+            ${task.due_date ? `<span class="due-tag ${overdue ? "overdue" : ""}">${overdue ? "Overdue · " : ""}${formatDueDate(task.due_date)}</span>` : ""}
+          </div>
+          <div class="sticky-actions">
+            <button data-action="edit">Edit</button>
+            <button class="danger" data-action="delete">Delete</button>
           </div>
         </div>
       `;
     }
 
-    function editFormHtml(task) {
-      const id = task.ID;
-      return `
-        <div class="task-card" data-id="${id}">
-          <form class="edit-form" data-action="save-edit">
-            <input type="text" class="edit-title" value="${escapeHtml(task.title)}" required>
-            <input type="text" class="edit-description" value="${escapeHtml(task.description || "")}" placeholder="Description">
-            <div class="edit-actions">
-              <button type="submit" class="btn-primary">Save</button>
-              <button type="button" class="icon-btn" data-action="cancel-edit">Cancel</button>
-            </div>
-          </form>
-        </div>
-      `;
+    function render() {
+      updateCounts();
+      renderStreak();
+      viewTitle.textContent = FILTER_LABELS[currentFilter];
+
+      const visible = getVisibleTasks();
+      viewSubtitle.textContent = `${visible.length} task${visible.length === 1 ? "" : "s"}${searchTerm ? ` matching "${searchTerm}"` : ""}`;
+
+      if (visible.length === 0) {
+        const emptyMsg = searchTerm
+          ? "No tasks match your search."
+          : currentFilter === "completed"
+            ? "Nothing completed yet."
+            : allTasks.length > 0
+              ? "Nothing pending — check the Completed tab."
+              : "No tasks yet. Add your first one.";
+        wallGrid.innerHTML = `<div class="state-block"><div class="state-title">${emptyMsg}</div></div>` +
+          `<button class="sticky-add" id="add-tile">+</button>`;
+      } else {
+        wallGrid.innerHTML = visible.map(stickyHtml).join("") + `<button class="sticky-add" id="add-tile">+</button>`;
+      }
+
+      document.getElementById("add-tile").addEventListener("click", () => openModal());
     }
 
     async function loadTasks() {
-      tasksEl.innerHTML = `<div class="state-block"><div class="state-title">Loading your tasks…</div></div>`;
+      wallGrid.innerHTML = `<div class="state-block"><div class="state-title">Loading your tasks…</div></div>`;
 
       let response;
       try {
         response = await authedFetch("/get_tasks");
       } catch (err) {
-        tasksEl.innerHTML = `<div class="state-block"><div class="state-title error">Can't reach the server</div>Check your connection and refresh.</div>`;
+        wallGrid.innerHTML = `<div class="state-block"><div class="state-title error">Can't reach the server</div>Check your connection and refresh.</div>`;
         return;
       }
 
-      if (response.status === 401) {
-        goToLogin();
-        return;
-      }
+      if (response.status === 401) { goToLogin(); return; }
 
       const data = await response.json().catch(() => null);
-
       if (!response.ok || !Array.isArray(data)) {
-        tasksEl.innerHTML = `<div class="state-block"><div class="state-title error">Couldn't load tasks</div>Something went wrong on our end. Try refreshing.</div>`;
-        statsEl.innerHTML = "";
+        wallGrid.innerHTML = `<div class="state-block"><div class="state-title error">Couldn't load tasks</div>Try refreshing the page.</div>`;
         return;
       }
 
-      renderStats(data);
+      allTasks = data;
+      render();
+    }
 
-      if (data.length === 0) {
-        tasksEl.innerHTML = `<div class="state-block"><div class="state-title">No tasks yet</div>Add your first task above to get started.</div>`;
+    /* ---------- Modal ---------- */
+    function openModal(task) {
+      editingTaskId = task ? task.ID : null;
+      modalTitle.textContent = task ? "Edit task" : "Add a task";
+      modalSaveBtn.textContent = task ? "Save changes" : "Add task";
+      titleInput.value = task ? task.title : "";
+      descInput.value = task ? (task.description || "") : "";
+      priorityInput.value = task ? (task.priority || "medium") : "medium";
+      dueDateInput.value = task && task.due_date ? task.due_date.slice(0, 10) : "";
+      modalBackdrop.classList.remove("hidden");
+      titleInput.focus();
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.add("hidden");
+      taskForm.reset();
+      editingTaskId = null;
+    }
+
+    modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModal(); });
+    document.getElementById("modal-cancel-btn").addEventListener("click", closeModal);
+    document.getElementById("add-task-nav").addEventListener("click", () => openModal());
+
+    taskForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = titleInput.value.trim();
+      const description = descInput.value.trim();
+      const priority = priorityInput.value;
+      // Send as RFC3339 so it matches Go's *time.Time JSON decoding; empty stays null.
+      const dueDate = dueDateInput.value ? new Date(dueDateInput.value + "T00:00:00Z").toISOString() : null;
+      if (!title) return;
+
+      modalSaveBtn.disabled = true;
+
+      try {
+        if (editingTaskId) {
+          const existing = allTasks.find(t => String(t.ID) === String(editingTaskId));
+          await authedFetch(`/tasks/update?id=${editingTaskId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title, description, priority,
+              due_date: dueDate,
+              completed: existing ? existing.completed : false
+            })
+          });
+        } else {
+          await authedFetch("/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description, priority, due_date: dueDate })
+          });
+        }
+        closeModal();
+        loadTasks();
+      } finally {
+        modalSaveBtn.disabled = false;
+      }
+    });
+
+    /* ---------- Card actions ---------- */
+    async function toggleTask(id) {
+      const task = allTasks.find(t => String(t.ID) === String(id));
+      if (!task) return;
+      const card = wallGrid.querySelector(`.sticky[data-id="${id}"]`);
+      const newCompleted = !task.completed;
+
+      // Under the new filter rules, toggling a task always moves it out
+      // of whichever tab you're currently viewing — so play the exit
+      // animation immediately rather than waiting on the network.
+      if (card) card.classList.add("removing");
+
+      try {
+        const response = await authedFetch(`/tasks/update?id=${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: task.title, description: task.description,
+            priority: task.priority, due_date: task.due_date,
+            completed: newCompleted
+          })
+        });
+        if (!response.ok) throw new Error("update failed");
+        const updated = await response.json().catch(() => null);
+        task.completed = newCompleted;
+        task.completed_at = updated ? updated.completed_at : task.completed_at;
+      } catch (err) {
+        if (card) card.classList.remove("removing");
+        alert("Couldn't update the task. Try again.");
         return;
       }
 
-      tasksEl.innerHTML = data.map(taskCardHtml).join("");
+      // Let the fade-out finish, then re-render from the already-updated
+      // local data — no extra network round trip, no loading flash.
+      setTimeout(render, card ? 220 : 0);
     }
 
-    async function toggleTask(id, nextCompleted, title, description) {
-      await authedFetch(`/tasks/update?id=${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, completed: nextCompleted })
-      });
-      loadTasks();
-    }
-
-    async function saveEdit(id, title, description, completed) {
-      await authedFetch(`/tasks/update?id=${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, completed })
-      });
-      loadTasks();
-    }
-
-    async function deleteTask(id) {
-      if (!confirm("Delete this task? This can't be undone.")) return;
-      await authedFetch(`/tasks/delete?id=${id}`, { method: "DELETE" });
-      loadTasks();
-    }
-
-    // Event delegation — one listener handles toggle / edit / delete / save / cancel
-    tasksEl.addEventListener("click", (e) => {
+    wallGrid.addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
-      const card = btn.closest(".task-card");
+      const card = btn.closest(".sticky");
+      if (!card) return;
       const id = card.dataset.id;
-      const action = btn.dataset.action;
+      const task = allTasks.find(t => String(t.ID) === String(id));
+      if (!task) return;
 
-      if (action === "delete") {
-        deleteTask(id);
-      } else if (action === "toggle") {
-        const done = card.classList.contains("done");
-        const title = card.querySelector(".task-body h3").textContent;
-        const descEl = card.querySelector(".task-body p");
-        toggleTask(id, !done, title, descEl ? descEl.textContent : "");
-      } else if (action === "edit") {
-        card.outerHTML = editFormHtml({
-          ID: id,
-          title: card.querySelector(".task-body h3").textContent,
-          description: card.querySelector(".task-body p")?.textContent || ""
-        });
-      } else if (action === "cancel-edit") {
+      if (btn.dataset.action === "toggle") {
+        toggleTask(id);
+      } else if (btn.dataset.action === "edit") {
+        openModal(task);
+      } else if (btn.dataset.action === "delete") {
+        if (!confirm("Delete this task? This can't be undone.")) return;
+        await authedFetch(`/tasks/delete?id=${id}`, { method: "DELETE" });
         loadTasks();
       }
     });
 
-    tasksEl.addEventListener("submit", (e) => {
-      const form = e.target.closest('[data-action="save-edit"]');
-      if (!form) return;
-      e.preventDefault();
-      const card = form.closest(".task-card");
-      const id = card.dataset.id;
-      const title = form.querySelector(".edit-title").value.trim();
-      const description = form.querySelector(".edit-description").value.trim();
-      if (!title) return;
-      saveEdit(id, title, description, false);
+    document.getElementById("status-nav").addEventListener("click", (e) => {
+      const btn = e.target.closest(".nav-item");
+      if (!btn) return;
+      document.querySelectorAll("#status-nav .nav-item").forEach(el => el.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter;
+      render();
     });
 
-    document.getElementById("create-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const titleEl = document.getElementById("title");
-      const descEl = document.getElementById("description");
-      const title = titleEl.value.trim();
-      const description = descEl.value.trim();
-      if (!title) return;
-
-      await authedFetch("/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description })
-      });
-
-      titleEl.value = "";
-      descEl.value = "";
-      loadTasks();
+    document.getElementById("search-input").addEventListener("input", (e) => {
+      searchTerm = e.target.value.trim();
+      render();
     });
 
     document.getElementById("logout-btn").addEventListener("click", goToLogin);

@@ -8,33 +8,59 @@
 </head>
 <body>
 
-  <div class="auth-shell">
-    <div class="auth-card">
-      <div class="auth-eyebrow">TaskFlow</div>
-      <h1>Create your account</h1>
+  <div class="split-shell">
 
-      <form id="register-form" novalidate>
-        <div class="field">
-          <label for="name">Name</label>
-          <input type="text" id="name" placeholder="Your name" required autocomplete="name">
+    <div class="split-decor">
+      <div class="split-decor-brand">TaskFlow</div>
+
+      <div class="split-decor-body">
+        <h1>A calmer way to run your day.</h1>
+        <p class="decor-tagline">Set up your account in a few seconds — no credit card, no clutter.</p>
+
+        <ul class="decor-features">
+          <li><span class="tick">✓</span> Free to use, built for individuals</li>
+          <li><span class="tick">✓</span> Your data stays isolated and secure</li>
+        </ul>
+
+        <div class="decor-stickies">
+          <div class="chip chip1">Content Plan<span></span><span style="width:65%"></span></div>
+          <div class="chip chip2">Design QA<span></span><span style="width:35%"></span></div>
+          <div class="chip chip3">Launch Prep<span></span><span style="width:90%"></span></div>
         </div>
+      </div>
 
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
-        </div>
-
-        <div class="field">
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="At least 8 characters" required autocomplete="new-password">
-        </div>
-
-        <button type="submit" class="btn-primary" id="submit-btn">Register</button>
-        <p id="msg" class="msg"></p>
-      </form>
-
-      <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+      <div class="split-decor-foot">Secure, JWT-authenticated task management.</div>
     </div>
+
+    <div class="split-form">
+      <div class="auth-card">
+        <div class="auth-eyebrow">TaskFlow</div>
+        <h1>Create your account</h1>
+
+        <form id="register-form" novalidate>
+          <div class="field">
+            <label for="name">Name</label>
+            <input type="text" id="name" placeholder="Your name" required autocomplete="name">
+          </div>
+
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="At least 8 characters" required autocomplete="new-password">
+          </div>
+
+          <button type="submit" class="btn-primary" id="submit-btn">Register</button>
+          <p id="msg" class="msg"></p>
+        </form>
+
+        <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+      </div>
+    </div>
+
   </div>
 
   <script>

@@ -124,6 +124,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		jwt.MapClaims{
 			"user_id" : user.ID,
 			"email" : user.Email,
+			"name" : user.Name,
 			"exp" : time.Now().Add(time.Hour * 24). Unix(),
 		},
 	)
