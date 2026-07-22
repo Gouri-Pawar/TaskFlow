@@ -722,6 +722,20 @@ select:focus-visible {
   margin-bottom: 14px;
 }
 
+.typewriter-el::after {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 0.85em;
+  background: var(--color-accent);
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  animation: tf-caret-blink 0.8s step-end infinite;
+}
+@keyframes tf-caret-blink {
+  50% { opacity: 0; }
+}
+
 .split-decor .decor-tagline {
   font-size: 14.5px;
   color: rgba(255,255,255,0.65);

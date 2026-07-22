@@ -66,6 +66,27 @@
   <script>
     const API_BASE = "http://localhost:8080"; // change this when deploying
 
+    // Typewriter effect for the hero headline — skipped for users who
+    // prefer reduced motion, who just see the full text immediately.
+    function typewriter(el, speed) {
+      if (!el) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const text = el.textContent;
+      el.textContent = "";
+      el.classList.add("typewriter-el");
+      let i = 0;
+      (function tick() {
+        el.textContent = text.slice(0, i);
+        i++;
+        if (i <= text.length) {
+          setTimeout(tick, speed);
+        } else {
+          setTimeout(() => el.classList.remove("typewriter-el"), 600);
+        }
+      })();
+    }
+    typewriter(document.querySelector(".split-decor h1"), 70);
+
     const form = document.getElementById("register-form");
     const msgEl = document.getElementById("msg");
     const submitBtn = document.getElementById("submit-btn");
