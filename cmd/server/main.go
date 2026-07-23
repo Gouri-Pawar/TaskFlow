@@ -89,6 +89,8 @@ func main() {
 		),
 	)
 
+	config.ConnectRedis()
+
 	fmt.Println("Server Running on port 8080")
 
 	err := http.ListenAndServe(

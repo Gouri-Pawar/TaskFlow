@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"taskflow/config"
@@ -70,6 +71,9 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// invalidate cached task list so the next GET reflects the new task
+	config.CacheDelete(fmt.Sprintf("tasks:%d", task.UserID))
+
 	json.NewEncoder(w).Encode(task)
 }
 
@@ -84,6 +88,14 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 			(float64),
 	)
 
+	cacheKey := fmt.Sprintf("tasks:%d", userID)
+
+	// try cache first — skip the DB entirely on a hit
+	if err := config.CacheGet(cacheKey, &tasks); err == nil {
+		json.NewEncoder(w).Encode(tasks)
+		return
+	}
+
 	err := config.DB.
 		Where("user_id = ?", userID).
 		Find(&tasks).Error
@@ -92,6 +104,9 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
 		return
 	}
+
+	// cache the result for 5 minutes
+	config.CacheSet(cacheKey, tasks, 5*time.Minute)
 
 	json.NewEncoder(w).Encode(tasks)
 }
@@ -138,6 +153,9 @@ func DeleteTask(
 	}
 
 	config.DB.Delete(&task)
+
+	// invalidate cache
+	config.CacheDelete(fmt.Sprintf("tasks:%d", userID))
 
 	json.NewEncoder(w).Encode(
 		map[string]string{
@@ -220,7 +238,7 @@ func UpdateTask(
 	// Only touch CompletedAt when the completed status actually
 	// changes — this is the key fix that makes streaks reliable.
 	// Editing a title/description no longer disturbs it.
-	
+
 	if updatedTask.Completed && !task.Completed {
 		now := time.Now()
 		task.CompletedAt = &now
@@ -232,6 +250,9 @@ func UpdateTask(
 		updatedTask.Completed
 
 	config.DB.Save(&task)
+
+	// invalidate cache
+	config.CacheDelete(fmt.Sprintf("tasks:%d", userID))
 
 	json.NewEncoder(w).Encode(task)
 }
