@@ -2,10 +2,6 @@
 
 A full-stack task management web app with JWT authentication, priorities, due dates, and daily completion streaks — built with Go, Gin-adjacent standard `net/http`, GORM, and PostgreSQL on the backend, and a lightweight vanilla HTML/CSS/JS frontend.
 
-> Repo: [github.com/Gouri-Pawar/TaskFlow](https://github.com/Gouri-Pawar/TaskFlow)
-
----
-
 ## Problem
 
 Most personal to-do lists fail for one of two reasons:
@@ -34,16 +30,22 @@ TaskFlow is a focused, single-user task tracker that:
 - 🗂️ **Filtering & search** — instantly filter by All / Pending / Completed, and search across task titles and descriptions.
 - 🎨 **Sticky-note dashboard UI** — a responsive, collapsible-sidebar dashboard styled like a wall of sticky notes, with an add/edit modal.
 - 🌐 **CORS-enabled REST API** — a clean JSON API that any frontend (or mobile client) could consume.
+  
 
-## Effectiveness / What It Demonstrates
+## Screenshots
 
-This project was built as a hands-on way to practice production-style backend patterns in Go, specifically:
+### Landing Page
+<img width="1920" height="1014" alt="Screenshot 2026-07-24 141344" src="https://github.com/user-attachments/assets/43e98690-b315-400d-9e30-4e20d97742d0" />
 
-- Designing a **REST API from scratch** using Go's standard `net/http` (no framework), including custom middleware chaining for CORS and JWT verification.
-- Implementing **stateless authentication** end-to-end: password hashing, token issuance, token verification, and per-request user-context propagation via `context.WithValue`.
-- Using **GORM** with PostgreSQL for schema auto-migration, scoped queries (`WHERE user_id = ?`), and struct-tag-driven JSON serialization.
-- Writing defensive handler logic — e.g. normalizing invalid `priority` values instead of rejecting the request, and only touching `CompletedAt` when the completion state actually changes (so edits to a task don't corrupt streak data).
-- Building a functional frontend without any framework: state management, optimistic UI updates, and derived data (like the streak) computed entirely in the browser from raw API data.
+### Login Page
+<img width="1920" height="1011" alt="Screenshot 2026-07-24 141437" src="https://github.com/user-attachments/assets/dc0d0336-5bc5-4d1f-b812-48be340abaa2" />
+
+### Dashboard
+<img width="1920" height="1017" alt="Screenshot (58)" src="https://github.com/user-attachments/assets/b23fc199-48f8-4332-b0a8-2ed9b5d3b8d1" />
+
+### Task Management
+<img width="1920" height="1015" alt="Screenshot (57)" src="https://github.com/user-attachments/assets/39e2b385-5d7e-4f28-8af1-8875c192d36d" />
+
 
 ## Tech Stack
 
@@ -59,109 +61,6 @@ This project was built as a hands-on way to practice production-style backend pa
 - PostgreSQL
 
 **Frontend**
-- Vanilla HTML, CSS, and JavaScript (no build tooling, no framework)
-
-## Project Structure
-
-```
-TaskFlow/
-├── cmd/
-│   └── server/
-│       └── main.go          # Entry point — routes, middleware, server bootstrap
-├── config/
-│   └── database.go          # PostgreSQL connection + .env loading
-├── handlers/
-│   ├── auth_handler.go      # Register / Login
-│   └── task_handler.go      # Create / Get / Update / Delete tasks
-├── middleware/
-│   └── jwt_middleware.go    # JWT verification, injects user_id into context
-├── models/
-│   ├── user.go               # User model (GORM)
-│   └── task.go               # Task model (GORM)
-├── frontend/
-│   ├── index.html            # Landing page
-│   ├── login.html            # Login page
-│   ├── register.html         # Registration page
-│   ├── dashboard.html        # Main app (task board, streaks, filters, modal)
-│   └── css/style.css
-├── go.mod / go.sum
-└── .gitignore
-```
-
-## API Reference
-
-All task routes require an `Authorization: Bearer <token>` header.
-
-| Method | Endpoint          | Description                          | Auth required |
-|--------|-------------------|---------------------------------------|:---:|
-| POST   | `/register`        | Create a new user account             | ❌ |
-| POST   | `/login`            | Authenticate and receive a JWT        | ❌ |
-| GET    | `/get_tasks`        | Get all tasks for the logged-in user  | ✅ |
-| POST   | `/tasks`            | Create a new task                     | ✅ |
-| PUT    | `/tasks/update?id=` | Update an existing task               | ✅ |
-| DELETE | `/tasks/delete?id=` | Delete a task                         | ✅ |
-
-**Task object shape:**
-
-```json
-{
-  "title": "string",
-  "description": "string",
-  "priority": "low | medium | high",
-  "due_date": "RFC3339 timestamp or null",
-  "completed": true,
-  "completed_at": "RFC3339 timestamp or null",
-  "user_id": 1
-}
-```
-
-## Getting Started
-
-### Prerequisites
-- Go 1.26+
-- PostgreSQL running locally (or a connection string to a remote instance)
-
-### 1. Clone the repo
-```bash
-git clone https://github.com/Gouri-Pawar/TaskFlow.git
-cd TaskFlow
-```
-
-### 2. Configure environment variables
-Create a `.env` file in the project root:
-
-```env
-DB_HOST=localhost
-DB_USER=your_pg_user
-DB_PASSWORD=your_pg_password
-DB_NAME=taskflow
-DB_PORT=5432
-JWT_SECRET=your_jwt_secret
-```
-
-### 3. Install dependencies
-```bash
-go mod tidy
-```
-
-### 4. Run the server
-```bash
-go run cmd/server/main.go
-```
-The API starts on `http://localhost:8080` and auto-migrates the `User` and `Task` tables on startup.
-
-### 5. Open the frontend
-Serve the `frontend/` folder with any static file server (e.g. the VS Code Live Server extension, or `python -m http.server`) and open `index.html` in your browser. The frontend calls the API at `http://localhost:8080` by default — update the `API_BASE` constant in `dashboard.html`, `login.html`, and `register.html` if you deploy the backend elsewhere.
-
-## Roadmap / Possible Improvements
-
-- Add automated tests (unit tests for handlers, integration tests for the API)
-- Move inline dashboard/login/register JavaScript into the existing `frontend/js/` files for better separation of concerns
-- Add task categories/tags and sorting options
-- Add refresh tokens / logout-everywhere support
-- Containerize with Docker Compose (app + Postgres) for one-command setup
-- Deploy a live demo
-
-## Author
-
-Built by [Gouri Pawar](https://github.com/Gouri-Pawar).
+- Vanilla HTML
+- CSS
+- JavaScript 
