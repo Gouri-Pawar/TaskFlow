@@ -1,6 +1,6 @@
 # TaskFlow
 
-A full-stack task management web app with JWT authentication, priorities, due dates, and daily completion streaks — built with Go, Gin-adjacent standard `net/http`, GORM, and PostgreSQL on the backend, and a lightweight vanilla HTML/CSS/JS frontend.
+A full-stack task management web app with JWT authentication, priorities, due dates, and daily completion streaks — built with Go, Gin-adjacent standard `net/http`, GORM, PostgreSQL and Redis on the backend, and a lightweight vanilla HTML/CSS/JS frontend.
 
 ## Problem
 
@@ -17,13 +17,15 @@ TaskFlow is a focused, single-user task tracker that:
 
 - Keeps each user's tasks private and secure behind token-based authentication.
 - Lets tasks carry a **priority** (low / medium / high) and an optional **due date**, so the list can be scanned and triaged at a glance.
-- Surfaces a **daily streak** (🔥) computed from completion history, turning task completion into a habit-forming feedback loop rather than a chore.
+- Surfaces a **daily streak** computed from completion history, turning task completion into a habit-forming feedback loop rather than a chore.
 - Ships as a clean split-view login/register experience and a single-page dashboard — no framework overhead, no build step, just a Go binary and static files.
 
 ## Key Features
 
 - **Secure auth** — registration and login with `bcrypt`-hashed passwords and stateless **JWT** sessions (24-hour expiry).
 - **Full task CRUD** — create, read, update, and delete tasks, scoped per authenticated user.
+- **Cached task lists** — Redis-backed caching on task reads for faster response times.
+- **JWT blacklist** — logged-out tokens are revoked instantly via Redis instead of remaining valid until natural expiry.
 - **Priorities** — every task is tagged low / medium / high, with an automatic fallback to `medium` for missing or invalid values.
 - **Due dates** — optional due dates, with overdue tasks flagged in the UI.
 - **Completion streaks** — a "current streak" counter and a 14-day activity dot-row, computed client-side from each task's `completed_at` timestamp.
@@ -56,6 +58,7 @@ TaskFlow is a focused, single-user task tracker that:
 - [`golang-jwt/jwt/v5`](https://github.com/golang-jwt/jwt) — JWT issuing and verification
 - [`golang.org/x/crypto/bcrypt`](https://pkg.go.dev/golang.org/x/crypto/bcrypt) — password hashing
 - [`joho/godotenv`](https://github.com/joho/godotenv) — environment variable loading
+- [`redis/go-redis/v9`](https://github.com/redis/go-redis) — Redis client for task-list caching and JWT blacklist
 
 **Database**
 - PostgreSQL
