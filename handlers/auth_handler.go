@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"taskflow/config"
 	"taskflow/models"
 	"time"
@@ -149,3 +150,72 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func Logout(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	authHeader := r.Header.Get("Authorization")
+
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization Header", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	// parse token just to read its expiry claim ("exp")
+	// we don't need to re-verify signature strictly here since
+	// JWTMiddleware already validated it before this handler runs
+
+	token, err := jwt.Parse(
+		tokenString,
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		},
+	)
+
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid Token", http.StatusUnauthorized)
+		return
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+
+	// figure out how long this token had left, so the blacklist
+	// entry expires from Redis at the same time the token would've
+	// expired naturally — no manual cleanup needed
+
+	var ttl time.Duration
+
+	if exp, ok := claims["exp"].(float64); ok {
+		expiry := time.Unix(int64(exp), 0)
+		ttl = time.Until(expiry)
+		if ttl < 0 {
+			ttl = 0
+		}
+	} else {
+		ttl = time.Hour * 24
+	}
+
+	err = config.RedisClient.Set(
+		r.Context(),
+		"blacklist:"+tokenString,
+		"true",
+		ttl,
+	).Err()
+
+	if err != nil {
+		http.Error(w, "Failed to logout", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"message": "Logged Out Successfully",
+		},
+	)
+
+}
