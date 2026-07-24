@@ -22,14 +22,14 @@ TaskFlow is a focused, single-user task tracker that:
 
 ## Key Features
 
-- 🔐 **Secure auth** — registration and login with `bcrypt`-hashed passwords and stateless **JWT** sessions (24-hour expiry).
-- ✅ **Full task CRUD** — create, read, update, and delete tasks, scoped per authenticated user.
-- 🚦 **Priorities** — every task is tagged low / medium / high, with an automatic fallback to `medium` for missing or invalid values.
-- 📅 **Due dates** — optional due dates, with overdue tasks flagged in the UI.
-- 🔥 **Completion streaks** — a "current streak" counter and a 14-day activity dot-row, computed client-side from each task's `completed_at` timestamp.
-- 🗂️ **Filtering & search** — instantly filter by All / Pending / Completed, and search across task titles and descriptions.
-- 🎨 **Sticky-note dashboard UI** — a responsive, collapsible-sidebar dashboard styled like a wall of sticky notes, with an add/edit modal.
-- 🌐 **CORS-enabled REST API** — a clean JSON API that any frontend (or mobile client) could consume.
+- **Secure auth** — registration and login with `bcrypt`-hashed passwords and stateless **JWT** sessions (24-hour expiry).
+- **Full task CRUD** — create, read, update, and delete tasks, scoped per authenticated user.
+- **Priorities** — every task is tagged low / medium / high, with an automatic fallback to `medium` for missing or invalid values.
+- **Due dates** — optional due dates, with overdue tasks flagged in the UI.
+- **Completion streaks** — a "current streak" counter and a 14-day activity dot-row, computed client-side from each task's `completed_at` timestamp.
+- **Filtering & search** — instantly filter by All / Pending / Completed, and search across task titles and descriptions.
+- **Sticky-note dashboard UI** — a responsive, collapsible-sidebar dashboard styled like a wall of sticky notes, with an add/edit modal.
+- **CORS-enabled REST API** — a clean JSON API that any frontend (or mobile client) could consume.
   
 
 ## Screenshots
