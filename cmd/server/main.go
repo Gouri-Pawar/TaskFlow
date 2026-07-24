@@ -51,6 +51,13 @@ func main() {
 		&models.Task{},
 	)
 
+	config.ConnectRedis()
+
+	http.Handle(
+	"/",
+	http.FileServer(http.Dir("./frontend")),
+)
+
 	http.HandleFunc(
 		"/register",
 		handlers.Register,
@@ -59,6 +66,13 @@ func main() {
 	http.HandleFunc(
 		"/login",
 		handlers.Login,
+	)
+
+	http.HandleFunc(
+		"/logout",
+		middleware.JWTMiddleware(
+			handlers.Logout,
+		),
 	)
 
 	http.HandleFunc(
@@ -88,8 +102,6 @@ func main() {
 		handlers.UpdateTask,
 		),
 	)
-
-	config.ConnectRedis()
 
 	fmt.Println("Server Running on port 8080")
 
